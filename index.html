@@ -1,0 +1,529 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bảo hiểm lúa theo độ mặn · Demo</title>
+<meta name="description" content="Demo mô phỏng hợp đồng bảo hiểm lúa tự chi trả khi độ mặn vượt ngưỡng.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* nước cửa sông */
+    --deep: #0a3332;
+    --river: #175250;
+    --on-deep: #ecf4f1;
+    --on-deep-2: #a6c2bc;
+    /* giấy */
+    --paper: #fbfcfb;
+    --panel: #edf3f1;
+    --ink: #0f2220;
+    --ink-2: #4a5b58;
+    /* mức, trên nền tối */
+    --safe-d: #8fd08a; --warn-d: #f2b844; --loss-d: #ff7f61;
+    /* mức, trên nền sáng */
+    --safe: #23692a; --warn: #855006; --loss: #b02a1a;
+    --salt-4: #d9a03c;
+    --salt-55: #e86f55;
+    --ease: cubic-bezier(.2, .7, .2, 1);
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.5 'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', sans-serif; }
+  .num { font-variant-numeric: tabular-nums; }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 0 48px; }
+
+  /* ---------- Phần nước (trên) ---------- */
+  .water { background: var(--deep); color: var(--on-deep); padding: 36px 0 28px; }
+  .top { display: flex; justify-content: space-between; align-items: baseline; gap: 24px; flex-wrap: wrap; }
+  h1 { margin: 0; font-size: 34px; line-height: 1.1; font-weight: 800; letter-spacing: -0.025em; }
+  .lede { margin: 8px 0 0; color: var(--on-deep-2); font-size: 17px; max-width: 46ch; }
+  .note { color: var(--warn-d); font-weight: 600; font-size: 14px; }
+
+  .readout { display: grid; grid-template-columns: 1.2fr 1fr; gap: 48px; margin-top: 40px; align-items: end; }
+  .who { font-size: 20px; font-weight: 600; }
+  .who span { color: var(--on-deep-2); font-weight: 400; }
+  .big { font-size: clamp(88px, 11vw, 148px); line-height: .9; font-weight: 800; letter-spacing: -0.045em; margin: 10px 0 28px; }
+  .big small { font-size: .3em; font-weight: 600; letter-spacing: 0; color: var(--on-deep-2); margin-left: 6px; }
+  .level { font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+  .level i { width: 12px; height: 12px; border-radius: 2px; background: currentColor; display: inline-block; }
+  .l1 { color: var(--safe-d); } .l2 { color: var(--warn-d); } .l3 { color: var(--loss-d); }
+
+  .paid-label { color: var(--on-deep-2); font-size: 15px; }
+  .paid { font-size: 44px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; margin: 4px 0 14px; }
+  .bar { height: 10px; background: rgba(255,255,255,.12); border-radius: 5px; overflow: hidden; }
+  .bar b { display: block; height: 100%; background: var(--warn-d); transform-origin: left; transform: scaleX(0); transition: transform .9s var(--ease); }
+  .paid-sub { display: flex; justify-content: space-between; gap: 12px; margin-top: 10px; font-size: 15px; color: var(--on-deep-2); }
+  .paid-sub strong { color: var(--on-deep); font-weight: 600; }
+
+  .river { margin-top: 36px; }
+  .river svg { width: 100%; height: auto; display: block; overflow: hidden; }
+  .river .salt { transform-box: fill-box; transform-origin: left center; transition: transform .9s var(--ease); }
+  .river .st { cursor: pointer; outline: none; }
+  .river .st .dot { transition: fill .4s; }
+  .river .st .sel { opacity: 0; transition: opacity .3s; }
+  .river .st[aria-pressed="true"] .sel { opacity: 1; }
+  .river .st:focus-visible .sel { opacity: 1; stroke-dasharray: 3 3; }
+  .river .ring { transform-box: fill-box; transform-origin: center; opacity: 0; pointer-events: none; }
+  .river .ring.go { animation: ring .9s var(--ease); }
+  @keyframes ring { from { transform: scale(1); opacity: .9; } to { transform: scale(3.2); opacity: 0; } }
+  .river-cap { color: var(--on-deep); font-size: 14px; margin: 10px 0 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .river-cap span { color: var(--on-deep-2); }
+  .sw { width: 14px; height: 14px; border-radius: 2px; display: inline-block; }
+  .sw.s4 { background: var(--salt-4); } .sw.s55 { background: var(--salt-55); margin-left: 8px; }
+  .river .front { transition: transform .9s var(--ease), opacity .4s; }
+  #season { width: 100%; height: auto; display: block; margin-top: 4px; }
+  #season .head { transition: transform .6s var(--ease); }
+
+  .controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 28px; }
+  .btn { font: inherit; font-weight: 700; font-size: 16px; cursor: pointer; border-radius: 4px; padding: 13px 22px; border: 0;
+         transition: transform .12s var(--ease), background-color .15s; }
+  .btn:active { transform: scale(.97); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+  .btn-salt { background: var(--warn-d); color: var(--deep); }
+  .btn-salt:hover { background: #f7c766; }
+  .btn-ghost { background: rgba(255,255,255,.1); color: var(--on-deep); }
+  .btn-ghost:hover { background: rgba(255,255,255,.18); }
+  .btn-ink { background: var(--ink); color: #fff; }
+  .btn-ink:hover { background: #22403c; }
+  .when { margin-left: auto; font-size: 18px; font-weight: 600; }
+  .when span { color: var(--on-deep-2); font-weight: 400; }
+  .btn:focus-visible, input:focus-visible { outline: 3px solid var(--warn-d); outline-offset: 2px; }
+
+  /* ---------- Phần giấy (dưới) ---------- */
+  .paper { padding: 56px 0 72px; }
+  .cols { display: grid; grid-template-columns: 5fr 6fr; gap: 64px; }
+  h2 { margin: 0 0 6px; font-size: 24px; font-weight: 800; letter-spacing: -0.02em; }
+  .hint { margin: 0 0 20px; color: var(--ink-2); }
+  section + section { margin-top: 48px; }
+
+  .fields { display: grid; gap: 16px; }
+  .field label { display: block; font-size: 15px; color: var(--ink-2); margin-bottom: 6px; }
+  .field input { width: 100%; font: inherit; font-size: 18px; font-weight: 600; padding: 12px 14px; border: 0; border-radius: 4px; background: var(--panel); color: var(--ink); }
+
+  .scale { margin-top: 28px; }
+  .scale-bar { display: grid; grid-template-columns: 4fr 1.5fr 2.5fr; height: 44px; border-radius: 4px; overflow: hidden; font-weight: 700; font-size: 15px; }
+  .scale-bar div { display: flex; align-items: center; padding: 0 12px; color: #fff; }
+  .s1 { background: var(--safe); } .s2 { background: var(--warn); } .s3 { background: var(--loss); }
+  .scale-axis { display: grid; grid-template-columns: 4fr 1.5fr 2.5fr; font-size: 14px; color: var(--ink-2); margin-top: 6px; white-space: nowrap; }
+  .scale-axis span:last-child { text-align: right; }
+
+  .try { background: var(--panel); border-radius: 4px; padding: 24px; }
+  .try-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .try-val { font-size: 40px; font-weight: 800; letter-spacing: -0.03em; }
+  .try-out { font-weight: 600; }
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 8px; border-radius: 4px; margin: 18px 0 20px;
+    background: linear-gradient(to right, var(--safe) 0 50%, var(--warn) 50% 68.75%, var(--loss) 68.75% 100%); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 26px; height: 26px; border-radius: 50%; background: #fff; border: 3px solid var(--ink); cursor: grab; }
+  input[type=range]::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: #fff; border: 3px solid var(--ink); cursor: grab; }
+  .t1 { color: var(--safe); } .t2 { color: var(--warn); } .t3 { color: var(--loss); }
+
+  .flow { list-style: none; padding: 0; margin: 0 0 24px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+  .flow li { padding: 14px 8px 0 0; font-size: 14px; color: var(--ink-2); position: relative; overflow: hidden; }
+  .flow li::before { content: ''; position: absolute; inset: 0 0 auto 0; height: 4px; background: #dbe4e1; }
+  .flow li b { display: block; color: var(--ink); font-size: 15px; }
+  .flow li::after { content: ''; position: absolute; inset: 0 0 auto 0; height: 4px; background: var(--ink); transform: scaleX(0); transform-origin: left; transition: transform .35s var(--ease); }
+  .flow li.on::after { transform: scaleX(1); }
+
+  table.ledger { width: 100%; border-collapse: collapse; font-size: 15px; }
+  .ledger th { text-align: left; font-weight: 600; color: var(--ink-2); padding: 0 8px 10px 0; border-bottom: 2px solid var(--ink); }
+  .ledger td { padding: 11px 8px 11px 0; border-bottom: 1px solid #dbe4e1; vertical-align: top; }
+  .ledger td.r, .ledger th.r { text-align: right; padding-right: 0; }
+  .ledger td:nth-child(4), .ledger th:nth-child(4) { padding-left: 20px; }
+  .ledger td:last-child { white-space: nowrap; }
+  .ledger tr.new { animation: rowin .5s var(--ease); }
+  .ledger tr.chi td.r { font-weight: 700; }
+  @keyframes rowin { from { opacity: 0; transform: translateY(-10px); } }
+  .ledger tfoot td { border-bottom: 0; border-top: 2px solid var(--ink); font-weight: 800; font-size: 17px; padding-top: 12px; }
+  .ledger-wrap { max-height: 460px; overflow: auto; }
+  .empty { color: var(--ink-2); padding: 20px 0; }
+
+  footer { border-top: 0; background: var(--panel); padding: 28px 0; color: var(--ink-2); font-size: 14px; }
+
+  /* vào trang */
+  .rise { animation: rise .7s var(--ease) both; animation-delay: var(--d, 0ms); }
+  @keyframes rise { from { opacity: 0; transform: translateY(18px); } }
+
+  @media (max-width: 960px) {
+    .wrap { padding: 0 20px; }
+    .readout, .cols { grid-template-columns: 1fr; gap: 32px; }
+    .when { margin-left: 0; width: 100%; }
+    .flow { grid-template-columns: 1fr 1fr; }
+    .river { overflow-x: auto; } .river svg { min-width: 760px; } /* màn hẹp: kéo ngang để xem cả dòng sông */
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="water">
+  <div class="wrap">
+    <div class="top rise">
+      <div>
+        <h1>Bảo hiểm lúa theo độ mặn</h1>
+        <p class="lede">Nước mặn vượt ngưỡng ở trạm đo thì hợp đồng tự chi tiền cho hợp tác xã, không cần người xuống giám định.</p>
+      </div>
+      <span class="note">Số liệu minh họa, không phải số đo thật</span>
+    </div>
+
+    <div class="readout">
+      <div class="rise" style="--d:80ms">
+        <div class="who" id="who"></div>
+        <div class="big num" aria-live="polite"><span id="big">0,0</span><small>‰</small></div>
+        <div class="level" id="level"></div>
+      </div>
+      <div class="rise" style="--d:160ms">
+        <div class="paid-label" id="paid-label"></div>
+        <div class="paid num" id="paid">0 đ</div>
+        <div class="bar"><b id="paid-bar"></b></div>
+        <div class="paid-sub"><span id="paid-max"></span><span>Tổng 5 hợp tác xã <strong class="num" id="total">0 đ</strong></span></div>
+      </div>
+    </div>
+
+    <div class="river rise" style="--d:240ms">
+      <svg id="river" viewBox="0 0 1200 300" role="group" aria-label="Sơ đồ dòng sông từ cửa biển vào nội đồng, năm trạm đo"></svg>
+      <svg id="season" viewBox="0 0 1200 92" role="img" aria-label="Ranh mặn 4‰ vào sâu bao nhiêu km qua từng đợt của mùa khô"></svg>
+      <p class="river-cap"><i class="sw s4"></i>Chỉ số S từ 4,0‰ <i class="sw s55"></i>Từ 5,5‰ <span>· Sơ đồ theo khoảng cách tới cửa sông, không theo bản đồ thật. Bấm vào một trạm để xem hợp đồng của trạm đó.</span></p>
+    </div>
+
+    <div class="controls rise" style="--d:320ms">
+      <button class="btn btn-salt" id="btn-play">Phát lại mùa khô</button>
+      <button class="btn btn-ghost" id="btn-reset">Bắt đầu vụ mới</button>
+      <div class="when num" id="when"></div>
+    </div>
+  </div>
+</div>
+
+<main class="paper">
+  <div class="wrap cols">
+    <div>
+      <section class="rise" style="--d:380ms">
+        <h2>Hợp đồng mẫu</h2>
+        <p class="hint">Mỗi trạm đo đại diện cho một hợp tác xã, cùng dùng hợp đồng này.</p>
+        <div class="fields">
+          <div class="field">
+            <label for="dien-tich">Diện tích lúa (ha)</label>
+            <input id="dien-tich" type="number" min="0.1" step="0.1" value="2" inputmode="decimal">
+          </div>
+          <div class="field">
+            <label for="so-tien-ha">Số tiền bảo hiểm mỗi ha (đồng)</label>
+            <input id="so-tien-ha" type="number" min="100000" step="100000" value="30000000" inputmode="numeric">
+          </div>
+        </div>
+        <div class="scale" aria-label="Quy tắc chi trả">
+          <div class="scale-bar"><div class="s1">0%</div><div class="s2">50%</div><div class="s3">100%</div></div>
+          <div class="scale-axis"><span>Dưới 4,0‰</span><span>4–5,5‰</span><span>Từ 5,5‰</span></div>
+        </div>
+      </section>
+
+      <section class="rise" style="--d:440ms">
+        <h2>Thử một chỉ số khác</h2>
+        <p class="hint">Gửi tay một chỉ số S cho vùng trạm <b id="try-name"></b>, như khi thầy hỏi "nếu mặn 5,0‰ thì sao".</p>
+        <div class="try">
+          <div class="try-row">
+            <label for="try" class="try-val num"><span id="try-val">5,0</span>‰</label>
+            <span class="try-out" id="try-out"></span>
+          </div>
+          <input id="try" type="range" min="0" max="8" step="0.1" value="5">
+          <button class="btn btn-ink" id="btn-send" style="width:100%">Gửi chỉ số này lên hợp đồng</button>
+        </div>
+      </section>
+    </div>
+
+    <div>
+      <section class="rise" style="--d:500ms">
+        <h2>Sổ chi trả</h2>
+        <p class="hint">Mỗi lần trạm gửi số đo, hợp đồng đi qua bốn bước dưới đây.</p>
+        <ol class="flow" id="flow">
+          <li><b>Oracle</b>chốt chỉ số S</li>
+          <li><b>Smart contract</b>so ngưỡng</li>
+          <li><b>Ngân hàng</b>chuyển VNĐ</li>
+          <li><b>Hợp tác xã</b>nhận tiền</li>
+        </ol>
+        <div class="ledger-wrap">
+          <table class="ledger">
+            <thead><tr><th>Ngày</th><th>Trạm</th><th class="r">Chỉ số S</th><th>Kết quả</th><th class="r">Chi</th></tr></thead>
+            <tbody id="ledger"></tbody>
+            <tfoot><tr><td colspan="4">Tổng đã chi</td><td class="r num" id="ledger-total">0 đ</td></tr></tfoot>
+          </table>
+          <p class="empty" id="empty">Chưa có số đo nào. Bấm "Phát lại mùa khô" để các trạm gửi số liệu từng đợt.</p>
+        </div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    Bản demo giữa kỳ. Mỗi số trên sơ đồ là chỉ số S của vùng trạm: trung bình trượt 72 giờ của giá trị đồng thuận (trung vị các nguồn đo), theo mục 4.2.1. Logic chi trả chạy trên trình duyệt để mô phỏng smart contract; khi triển khai sẽ chạy trên blockchain được cấp quyền (mục 4.1.2).
+    Ngưỡng 4,0‰ và 5,5‰ là ngưỡng ví dụ của nhóm. Tên trạm là tên khu vực thuộc Bến Tre cũ (nay thuộc tỉnh Vĩnh Long), không phải trạm quan trắc chính thức.
+  </div>
+</footer>
+
+<script src="data.js"></script>
+<script src="payout.js"></script>
+<script>
+(() => {
+  const { xepMuc, payout, taoHopDong } = BaoHiem;
+  const $ = id => document.getElementById(id);
+  const vnd = n => new Intl.NumberFormat('vi-VN').format(n) + ' đ';
+  const pm = n => n.toLocaleString('vi-VN', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  const giam = matchMedia('(prefers-reduced-motion: reduce)');
+  const TRAM = DU_LIEU.tram;
+  const byId = Object.fromEntries(TRAM.map(t => [t.id, t]));
+
+  let chon = TRAM[0].id;
+  let ngay = 0;             // đợt đang hiển thị
+  let doMan = {};           // số đo đang hiển thị của từng trạm
+  let hopDong = {};         // hợp đồng của từng trạm
+  let hen = null;
+
+  // ---------- Sơ đồ dòng sông ----------
+  // Sông vẽ theo khoảng cách tới cửa sông: miệng rộng phía biển, hẹp dần và uốn khúc vào nội đồng.
+  const X0 = 60, X1 = 1176, KM = 80, XS = -40;
+  const xKm = km => X0 + km / KM * (X1 - X0);
+  const tSong = x => (x - XS) / (X1 - XS);
+  const nua = x => 8 + 46 * Math.pow(1 - tSong(x), 1.8);          // nửa bề rộng lòng sông
+  const giua = x => 160 + 16 * Math.sin(tSong(x) * Math.PI * 2.4 + 0.6); // đường giữa dòng
+
+  function veSong() {
+    const xs = [];
+    for (let x = XS; x < X1; x += 12) xs.push(x);
+    xs.push(X1);
+    const bo = xs.map(x => `${x},${(giua(x) - nua(x)).toFixed(1)}`)
+      .concat(xs.slice().reverse().map(x => `${x},${(giua(x) + nua(x)).toFixed(1)}`));
+    const d = 'M' + bo.join(' L') + ' Z';
+    let s = `<defs><clipPath id="riv"><path d="${d}"/></clipPath></defs>`;
+    s += `<path d="${d}" fill="var(--river)"/>`;
+    s += `<g clip-path="url(#riv)">
+      <rect class="salt" id="salt-4" x="${XS}" y="0" width="${X1 - XS}" height="300" fill="var(--salt-4)" style="transform:scaleX(0)"/>
+      <rect class="salt" id="salt-55" x="${XS}" y="0" width="${X1 - XS}" height="300" fill="var(--salt-55)" style="transform:scaleX(0)"/>
+    </g>`;
+    s += `<g class="front" id="front" style="opacity:0">
+      <line x1="0" x2="0" y1="30" y2="276" stroke="var(--on-deep)" stroke-width="1.5" stroke-dasharray="3 5"/>
+      <text id="front-t1" x="10" y="38" fill="var(--warn-d)" font-size="14" font-weight="700">Ranh mặn 4‰</text>
+      <text id="front-t2" class="num" x="10" y="58" fill="var(--on-deep)" font-size="14">vào sâu 0 km</text>
+    </g>`;
+    s += `<text x="0" y="${giua(0) + 5}" fill="var(--deep)" font-size="14" font-weight="800">Biển</text>`;
+    s += `<text x="${X1}" y="292" fill="var(--on-deep-2)" font-size="13" text-anchor="end">Nội đồng · ${KM} km</text>`;
+    TRAM.forEach(t => {
+      const x = xKm(t.km), cy = giua(x), h = nua(x);
+      s += `<g class="st" data-id="${t.id}" tabindex="0" role="button" aria-label="Trạm ${t.ten}, cách cửa sông ${t.km} km">
+        <text x="${x}" y="${cy - h - 16}" text-anchor="middle" fill="var(--on-deep)" font-size="16" font-weight="700">${t.ten}</text>
+        <circle class="sel" cx="${x}" cy="${cy}" r="19" fill="none" stroke="var(--on-deep)" stroke-width="2"/>
+        <circle class="ring" id="ring-${t.id}" cx="${x}" cy="${cy}" r="10" fill="none" stroke="var(--warn-d)" stroke-width="3"/>
+        <circle class="dot" id="dot-${t.id}" cx="${x}" cy="${cy}" r="10" stroke="var(--deep)" stroke-width="3"/>
+        <text id="val-${t.id}" class="num" x="${x}" y="${cy + h + 28}" text-anchor="middle" fill="var(--on-deep)" font-size="18" font-weight="700"></text>
+        <text id="pay-${t.id}" class="num" x="${x}" y="${cy + h + 47}" text-anchor="middle" fill="var(--on-deep-2)" font-size="13"></text>
+      </g>`;
+    });
+    $('river').innerHTML = s;
+  }
+
+  // Vị trí (km) xa nhất mà chỉ số còn từ k trở lên. Phía biển coi như 12‰.
+  function ranhManTu(vals, k) {
+    const pts = [{ km: 0, v: 12 }, ...TRAM.map(t => ({ km: t.km, v: vals[t.id] }))];
+    for (let i = 0; i + 1 < pts.length; i++) {
+      const a = pts[i], b = pts[i + 1];
+      if (a.v >= k && b.v < k) return a.km + (a.v - k) / (a.v - b.v) * (b.km - a.km);
+    }
+    return pts[pts.length - 1].v >= k ? KM : 0;
+  }
+  const ranhMan = k => ranhManTu(doMan, k);
+
+  // ---------- Dải mùa khô: ranh mặn 4‰ qua từng đợt ----------
+  const xNgay = i => X0 + i * (X1 - X0) / (DU_LIEU.ngay.length - 1);
+  const RANH_MUA = DU_LIEU.ngay.map((_, i) => ranhManTu(Object.fromEntries(TRAM.map(t => [t.id, t.doMan[i]])), 4));
+  function veMua() {
+    const cao = Math.max(...RANH_MUA) || 1;
+    const yR = km => 64 - km / cao * 52; // đỉnh mùa chạm gần mép trên
+    const line = RANH_MUA.map((f, i) => `${xNgay(i)},${yR(f).toFixed(1)}`).join(' L');
+    let s = `<path d="M${xNgay(0)},64 L${line} L${xNgay(RANH_MUA.length - 1)},64 Z" fill="rgba(255,255,255,.06)"/>`;
+    RANH_MUA.forEach((f, i) => { s += `<circle cx="${xNgay(i)}" cy="${yR(f).toFixed(1)}" r="3" fill="var(--warn-d)"><title>${DU_LIEU.ngay[i]}: ${Math.round(f)} km</title></circle>`; });
+    s += `<path d="M${line}" fill="none" stroke="var(--warn-d)" stroke-width="2"/>`;
+    s += `<text x="0" y="20" fill="var(--on-deep-2)" font-size="13">Ranh mặn 4‰</text><text x="0" y="38" fill="var(--on-deep-2)" font-size="13">qua mùa khô</text>`;
+    DU_LIEU.ngay.forEach((d, i) => {
+      s += `<text x="${xNgay(i)}" y="86" text-anchor="middle" fill="var(--on-deep-2)" font-size="13" class="num" id="d-${i}">${d}</text>`;
+    });
+    s += `<g class="head" id="head"><line x1="0" x2="0" y1="4" y2="68" stroke="var(--on-deep)" stroke-width="2"/></g>`;
+    $('season').innerHTML = s;
+  }
+
+  function capNhatSong() {
+    [[4, 'salt-4'], [5.5, 'salt-55']].forEach(([k, id]) => {
+      const f = ranhMan(k);
+      $(id).style.transform = `scaleX(${f ? (xKm(f) - XS) / (X1 - XS) : 0})`;
+    });
+    const f4 = ranhMan(4), xf = xKm(f4), trai = xf > 980;
+    $('front').style.opacity = f4 >= TRAM[0].km ? 1 : 0; // chưa qua trạm đầu thì chú thích chỉ đè lên chữ
+    $('front').style.transform = `translateX(${xf}px)`;
+    ['front-t1', 'front-t2'].forEach(id => {
+      $(id).setAttribute('x', trai ? -10 : 10);
+      $(id).setAttribute('text-anchor', trai ? 'end' : 'start');
+    });
+    $('front-t2').textContent = `vào sâu ${Math.round(f4)} km`;
+    $('head').style.transform = `translateX(${xNgay(ngay)}px)`;
+    DU_LIEU.ngay.forEach((_, i) => {
+      const d = $('d-' + i);
+      d.setAttribute('fill', i === ngay ? 'var(--on-deep)' : 'var(--on-deep-2)');
+      d.setAttribute('font-weight', i === ngay ? 700 : 400);
+    });
+    TRAM.forEach(t => {
+      const v = doMan[t.id], m = xepMuc(v);
+      $('dot-' + t.id).setAttribute('fill', `var(--${['safe', 'warn', 'loss'][m.bac - 1]}-d)`);
+      $('val-' + t.id).textContent = pm(v) + '‰';
+      const da = hopDong[t.id] ? hopDong[t.id].daTra : 0;
+      $('pay-' + t.id).textContent = da ? 'đã chi ' + rutGon(da) : 'chưa chi';
+      $('river').querySelector(`.st[data-id="${t.id}"]`).setAttribute('aria-pressed', t.id === chon);
+    });
+  }
+  const rutGon = n => n >= 1e6 ? pm(n / 1e6).replace(',0', '') + ' triệu' : vnd(n);
+
+  $('river').addEventListener('click', e => { const g = e.target.closest('.st'); if (g) chonTram(g.dataset.id); });
+  $('river').addEventListener('keydown', e => {
+    const g = e.target.closest('.st');
+    if (g && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); chonTram(g.dataset.id); }
+  });
+
+  // ---------- Số lớn ----------
+  let soDangHien = 0, henSo = null;
+  function chayso(den) {
+    cancelAnimationFrame(henSo);
+    const tu = soDangHien, t0 = performance.now(), dai = giam.matches ? 0 : 600;
+    const buoc = now => {
+      const p = dai ? Math.min(1, (now - t0) / dai) : 1;
+      soDangHien = tu + (den - tu) * (1 - Math.pow(1 - p, 3));
+      $('big').textContent = pm(soDangHien);
+      if (p < 1) henSo = requestAnimationFrame(buoc);
+    };
+    henSo = requestAnimationFrame(buoc);
+  }
+
+  function capNhatSoDo() {
+    const t = byId[chon], v = doMan[chon], m = xepMuc(v), hd = hopDong[chon];
+    $('who').innerHTML = `${t.ten} <span>· chỉ số độ mặn S · cách cửa sông ${t.km} km</span>`;
+    chayso(v);
+    $('level').className = 'level l' + m.bac;
+    $('level').innerHTML = `<i></i>Mức ${m.bac} · ${m.ten}${m.tyLe ? ` · chi ${m.tyLe * 100}%` : ''}`;
+    $('paid-label').textContent = `Đã chi cho hợp tác xã ${t.ten}`;
+    $('paid').textContent = hd ? vnd(hd.daTra) : '—';
+    $('paid-max').textContent = hd ? `trên tối đa ${vnd(hd.soTienBaoHiem)}` : 'Nhập hợp đồng hợp lệ';
+    $('paid-bar').style.transform = `scaleX(${hd ? hd.daTra / hd.soTienBaoHiem : 0})`;
+    const tong = Object.values(hopDong).reduce((s, h) => s + h.daTra, 0);
+    $('total').textContent = vnd(tong);
+    $('ledger-total').textContent = vnd(tong);
+    $('try-name').textContent = t.ten;
+    $('when').innerHTML = `Ngày ${DU_LIEU.ngay[ngay]} <span>· đợt ${ngay + 1}/${DU_LIEU.ngay.length}</span>`;
+    capNhatSong();
+    xemThu();
+  }
+
+  function chonTram(id) { chon = id; capNhatSoDo(); }
+
+  // ---------- Hợp đồng ----------
+  function moVu() {
+    const dienTichHa = parseFloat($('dien-tich').value), soTienMoiHa = parseFloat($('so-tien-ha').value);
+    hopDong = {};
+    try { TRAM.forEach(t => { hopDong[t.id] = taoHopDong({ dienTichHa, soTienMoiHa }); }); } catch { hopDong = {}; }
+    $('ledger').innerHTML = '';
+    $('empty').hidden = false;
+    $('btn-play').disabled = $('btn-send').disabled = !hopDong[chon];
+    hienDot(0);
+  }
+  function hienDot(i) {
+    ngay = i;
+    TRAM.forEach(t => { doMan[t.id] = t.doMan[i]; });
+    capNhatSoDo();
+  }
+
+  // Một trạm gửi một số đo lên hợp đồng của nó.
+  function gui(id, v, nhan) {
+    const hd = hopDong[id];
+    if (!hd) return;
+    const truoc = hd.daTra;
+    const { muc, chiThem } = hd.guiSoDo(v);
+    doMan[id] = v;
+    if (chiThem === 0 && nhan !== 'Tay') return; // khi phát lại chỉ ghi sổ những lần có chi tiền, cho gọn
+    const ketQua = chiThem > 0
+      ? (truoc > 0 ? `Mức ${muc.bac}, chi thêm phần chênh` : `Mức ${muc.bac}, chi ${muc.tyLe * 100}%`)
+      : muc.tyLe > 0 ? `Mức ${muc.bac}, đã chi trước đó` : 'Mức 1, không chi';
+    const tr = document.createElement('tr');
+    tr.className = 'new' + (chiThem > 0 ? ' chi' : '');
+    [nhan, byId[id].ten, pm(v) + '‰', ketQua, chiThem ? vnd(chiThem) : '0 đ'].forEach((c, i) => {
+      const td = document.createElement('td');
+      td.textContent = c;
+      if (i === 2 || i === 4) td.className = 'r num';
+      if (i === 3) td.className = 't' + muc.bac;
+      tr.append(td);
+    });
+    $('ledger').prepend(tr);
+    $('empty').hidden = true;
+    if (chiThem > 0) {
+      const r = $('ring-' + id);
+      r.classList.remove('go'); void r.getBBox(); r.classList.add('go');
+    }
+    return chiThem > 0;
+  }
+
+  // ---------- Luồng bốn bước ----------
+  const buocLuong = [...$('flow').children];
+  let henLuong = [];
+  function chayLuong(soBuoc) {
+    henLuong.forEach(clearTimeout); henLuong = [];
+    buocLuong.forEach(li => li.classList.remove('on'));
+    const tre = giam.matches ? 0 : 180;
+    buocLuong.slice(0, soBuoc).forEach((li, i) => henLuong.push(setTimeout(() => li.classList.add('on'), i * tre)));
+  }
+
+  // ---------- Phát lại mùa khô ----------
+  function phatLai() {
+    if (hen) return dung();
+    moVu();
+    $('btn-play').textContent = 'Dừng';
+    $('btn-send').disabled = true;
+    let i = 0;
+    const buoc = () => {
+      ngay = i;
+      let coChi = false;
+      TRAM.forEach(t => { if (gui(t.id, t.doMan[i], DU_LIEU.ngay[i])) coChi = true; });
+      chayLuong(coChi ? 4 : 2);
+      capNhatSoDo();
+      if (++i >= DU_LIEU.ngay.length) dung();
+    };
+    buoc();
+    hen = setInterval(buoc, 1400);
+  }
+  function dung() {
+    clearInterval(hen); hen = null;
+    $('btn-play').textContent = 'Phát lại mùa khô';
+    $('btn-play').disabled = $('btn-send').disabled = !hopDong[chon];
+  }
+
+  // ---------- Thử số đo khác ----------
+  function xemThu() {
+    const v = parseFloat($('try').value), m = xepMuc(v), hd = hopDong[chon];
+    $('try-val').textContent = pm(v);
+    $('try-out').className = 'try-out t' + m.bac;
+    $('try-out').textContent = `Mức ${m.bac} · chi ${m.tyLe * 100}%` + (hd ? ` = ${vnd(payout(v, hd.soTienBaoHiem))}` : '');
+  }
+  $('try').addEventListener('input', xemThu);
+  $('btn-send').addEventListener('click', () => {
+    const coChi = gui(chon, parseFloat($('try').value), 'Tay');
+    chayLuong(coChi ? 4 : 2);
+    capNhatSoDo();
+  });
+
+  $('btn-play').addEventListener('click', phatLai);
+  $('btn-reset').addEventListener('click', () => { dung(); moVu(); });
+  ['dien-tich', 'so-tien-ha'].forEach(id => $(id).addEventListener('change', () => { dung(); moVu(); }));
+
+  veSong();
+  veMua();
+  moVu();
+})();
+</script>
+</body>
+</html>
