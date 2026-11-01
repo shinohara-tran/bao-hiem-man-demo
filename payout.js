@@ -62,18 +62,26 @@
   }
 
   function tinhOracleDaNguon(nguon, bienDo = 0.15) {
-    const can = Math.ceil(nguon.length * 2 / 3);
-    const chiTiet = nguon.map(n => {
+    // Mô hình này yêu cầu tối thiểu 3 nguồn độc lập. Với ít hơn 3 nguồn,
+    // không đủ cơ sở để thực hiện cơ chế đồng thuận 2/3.
+    const dauVao = Array.isArray(nguon) ? nguon : [];
+    const tongNguon = dauVao.length;
+    const chiTiet = dauVao.map(n => {
       let trangThai = 'hop-le', lyDo = '';
       if (!n.ketNoi) { trangThai = 'loai'; lyDo = 'Mất kết nối'; }
       else if (!n.chuKyHopLe) { trangThai = 'loai'; lyDo = 'Sai chữ ký số'; }
       else if (!Number.isFinite(n.giaTri) || n.giaTri < 0) { trangThai = 'loai'; lyDo = 'Giá trị không hợp lệ'; }
       return { ...n, trangThai, lyDo };
     });
+    if (tongNguon < 3) {
+      return { trangThai: 'CHO_KIEM_TRA', giaTri: null, chiTiet,
+        lyDo: `Chỉ có ${tongNguon} nguồn được cấu hình; cần tối thiểu 3 nguồn độc lập` };
+    }
+    const can = Math.ceil(tongNguon * 2 / 3);
     const hopLe = chiTiet.filter(n => n.trangThai === 'hop-le');
     if (hopLe.length < can) {
       return { trangThai: 'CHO_KIEM_TRA', giaTri: null, chiTiet,
-        lyDo: `Chỉ ${hopLe.length}/${nguon.length} nguồn hoạt động, cần tối thiểu ${can}` };
+        lyDo: `Chỉ ${hopLe.length}/${tongNguon} nguồn hoạt động, cần tối thiểu ${can}` };
     }
     const tv = trungVi(hopLe.map(n => n.giaTri));
     hopLe.forEach(n => {
@@ -82,10 +90,10 @@
     const dongThuan = chiTiet.filter(n => n.trangThai === 'hop-le').length;
     if (dongThuan < can) {
       return { trangThai: 'CHO_KIEM_TRA', giaTri: null, trungVi: tv, chiTiet,
-        lyDo: `Chỉ ${dongThuan}/${nguon.length} nguồn đồng thuận, cần tối thiểu ${can}` };
+        lyDo: `Chỉ ${dongThuan}/${tongNguon} nguồn đồng thuận, cần tối thiểu ${can}` };
     }
     return { trangThai: 'HOP_LE', giaTri: Math.round(tv * 100) / 100, trungVi: tv, chiTiet,
-      lyDo: `${dongThuan}/${nguon.length} nguồn đồng thuận` };
+      lyDo: `${dongThuan}/${tongNguon} nguồn đồng thuận` };
   }
 
   const api = { MUC, xepMuc, tyLeChiTra, payout, taoHopDong, trungVi, tinhOracleDaNguon };
@@ -139,6 +147,10 @@
     kt(() => { const n = N(3.6, 3.7, 3.5); n[1].ketNoi = false; n[2].ketNoi = false; assert.strictEqual(tinhOracleDaNguon(n).trangThai, 'CHO_KIEM_TRA'); });
     // sai chữ ký số một nguồn: vẫn đủ 2/3
     kt(() => { const n = N(4.6, 4.7, 9.9); n[2].chuKyHopLe = false; const r = tinhOracleDaNguon(n); assert.strictEqual(r.trangThai, 'HOP_LE'); assert.strictEqual(r.giaTri, 4.65); });
+    // Không đủ ba nguồn độc lập: luôn chờ kiểm tra, kể cả khi 0 hoặc 1 nguồn có dữ liệu.
+    kt(() => assert.strictEqual(tinhOracleDaNguon([]).trangThai, 'CHO_KIEM_TRA'));
+    kt(() => assert.strictEqual(tinhOracleDaNguon(N(3.6, 3.7, 3.5).slice(0, 1)).trangThai, 'CHO_KIEM_TRA'));
+    kt(() => assert.strictEqual(tinhOracleDaNguon(N(3.6, 3.7, 3.5).slice(0, 2)).trangThai, 'CHO_KIEM_TRA'));
 
     console.log(`payout.js: tất cả ${soKiemTra} kiểm tra đều đạt`);
   }
